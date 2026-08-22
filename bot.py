@@ -14,9 +14,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import os
 
+# خواندن تنظیمات از متغیرهای محیطی Railway
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-owner_chat_id = 6422509900
+owner_chat_id = int(os.getenv("ADMIN_TELEGRAM_ID", 6422509900))
+FORCE_CHANNEL_USERNAME = os.getenv("FORCE_CHANNEL_USERNAME", "@GOATSERVERS")
+OWNER_USERNAME = "goatserverss"  # نام کاربری مالک ربات (بدون @)
 
 ADMINS_DATA = {
     "amirhszz": {"prefix": "Amir", "max_gb": None, "max_days": None, "prepaid_gb": 0.0},
@@ -25,13 +27,15 @@ ADMINS_DATA = {
 
 ADMINS_STATS = {}
 
-PANEL_VOLUMETRIC_URL = "https://sw-r.arazcctv.ir:8000"
-PANEL_VOLUMETRIC_USERNAME = "Goathszz"
-PANEL_VOLUMETRIC_PASSWORD = "Goathszz"
+# پنل حجمی
+PANEL_VOLUMETRIC_URL = os.getenv("PANEL_VOLUMETRIC_URL", "https://sw-r.arazcctv.ir:8000")
+PANEL_VOLUMETRIC_USERNAME = os.getenv("PANEL_VOLUMETRIC_USERNAME", "Goathszz")
+PANEL_VOLUMETRIC_PASSWORD = os.getenv("PANEL_VOLUMETRIC_PASSWORD", "Goathszz")
 
-PANEL_ECO_URL = "https://youpanel.temas-arvha.ir:2053"
-PANEL_ECO_USERNAME = "rp6422509900_0b211fdd"
-PANEL_ECO_PASSWORD = "LMQFmdeFAQ7EwvUr3h"
+# پنل اقتصادی (Eco)
+PANEL_ECO_URL = os.getenv("PANEL_ECO_URL", "https://youpanel.temas-arvha.ir:2053")
+PANEL_ECO_USERNAME = os.getenv("PANEL_ECO_USERNAME", "rp6422509900_0b211fdd")
+PANEL_ECO_PASSWORD = os.getenv("PANEL_ECO_PASSWORD", "LMQFmdeFAQ7EwvUr3h")
 
 user_states = {}
 
@@ -120,7 +124,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"✨ **سلام {user.first_name} عزیز، خوش آمدید!** ✨\n\n"
             "این ربات مخصوص مدیریت و ساخت کانفینگ اختصاصی ادمین‌هاست.\n"
-            "💬 **@goatserverss**",
+            f"💬 **{FORCE_CHANNEL_USERNAME}**",
             parse_mode="Markdown"
         )
         return
@@ -136,7 +140,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     if not is_allowed_user(user.username):
         await update.message.reply_text(
-            "🌸 کاربر گرامی، شما به بخش مدیریت دسترسی ندارید.\n💬 **@goatserverss**",
+            f"🌸 کاربر گرامی، شما به بخش مدیریت دسترسی ندارید.\n💬 **{FORCE_CHANNEL_USERNAME}**",
             parse_mode="Markdown"
         )
         return
@@ -539,7 +543,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text(f"❌ خطا در دریافت توکن پنل:\n`{err}`", parse_mode="Markdown", reply_markup=get_main_keyboard(user.username))
                     return
 
-                # تنظیم کلید groups متناسب با یوپنل (پنل اقتصادی) و مرزبان
                 payload = {
                     "username": username_conf, 
                     "status": "active",
@@ -703,7 +706,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for i in range(1, count + 1):
                     username_conf = f"{admin_prefix}_{i}_{int(datetime.now().timestamp())}"
                     
-                    # تنظیم کلید groups متناسب با یوپنل (پنل اقتصادی) و مرزبان
                     payload = {
                         "username": username_conf, 
                         "status": "active",
