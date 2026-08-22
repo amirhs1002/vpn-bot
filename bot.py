@@ -537,6 +537,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text(f"❌ خطا در دریافت توکن پنل:\n`{err}`", parse_mode="Markdown", reply_markup=get_main_keyboard(user.username))
                     return
 
+                # تنظیم کلید groups متناسب با یوپنل (پنل اقتصادی) و مرزبان
                 payload = {
                     "username": username_conf, 
                     "status": "active",
@@ -700,6 +701,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for i in range(1, count + 1):
                     username_conf = f"{admin_prefix}_{i}_{int(datetime.now().timestamp())}"
                     
+                    # تنظیم کلید groups متناسب با یوپنل (پنل اقتصادی) و مرزبان
                     payload = {
                         "username": username_conf, 
                         "status": "active",
