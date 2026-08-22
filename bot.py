@@ -14,25 +14,20 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import os
 
-# خواندن تنظیمات از متغیرهای محیطی Railway
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OWNER_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", 6422509900))
 FORCE_CHANNEL_USERNAME = os.getenv("FORCE_CHANNEL_USERNAME", "@GOATSERVERS")
 
-# لیست ادمین‌ها (با آیدی عددی یا یوزرنیم)
 ADMINS_DATA = {
     6422509900: {"username": "goatserverss", "prefix": "Goat", "max_gb": None, "max_days": None, "prepaid_gb": 0.0},
-    # ادمین‌های دیگر را می‌توانید بر اساس آیدی عددی یا یوزرنیم اضافه کنید
 }
 
 ADMINS_STATS = {}
 
-# پنل حجمی
 PANEL_VOLUMETRIC_URL = os.getenv("PANEL_VOLUMETRIC_URL", "https://sw-r.arazcctv.ir:8000")
 PANEL_VOLUMETRIC_USERNAME = os.getenv("PANEL_VOLUMETRIC_USERNAME", "Goathszz")
 PANEL_VOLUMETRIC_PASSWORD = os.getenv("PANEL_VOLUMETRIC_PASSWORD", "Goathszz")
 
-# پنل اقتصادی (Eco)
 PANEL_ECO_URL = os.getenv("PANEL_ECO_URL", "https://youpanel.temas-arvha.ir:2053")
 PANEL_ECO_USERNAME = os.getenv("PANEL_ECO_USERNAME", "rp6422509900_0b211fdd")
 PANEL_ECO_PASSWORD = os.getenv("PANEL_ECO_PASSWORD", "LMQFmdeFAQ7EwvUr3h")
@@ -62,19 +57,13 @@ def generate_qr_code(data: str) -> io.BytesIO:
     bio.seek(0)
     return bio
 
-def is_allowed_user(user_id: int) -> bool:
-    return user_id in ADMINS_DATA
-
-def is_owner(user_id: int) -> bool:
-    return user_id == OWNER_TELEGRAM_ID
-
 def get_main_keyboard(user_id: int):
+    # همیشه دکمه‌های مدیریت و بکاپ را نشان می‌دهد
     keyboard = [
         [KeyboardButton("🚀 ساخت کانفینگ"), KeyboardButton("📦 ساخت کانفینگ عمده")],
-        [KeyboardButton("📂 اشتراک‌های من")]
+        [KeyboardButton("📂 اشتراک‌های من"), KeyboardButton("⚙️ مدیریت")],
+        [KeyboardButton("💾 بکاپ")]
     ]
-    if is_owner(user_id):
-        keyboard.append([KeyboardButton("⚙️ مدیریت"), KeyboardButton("💾 بکاپ")])
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 def get_cancel_keyboard():
@@ -115,15 +104,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user.id in user_states:
         user_states.pop(user.id, None)
 
-    if not is_allowed_user(user.id):
-        await update.message.reply_text(
-            f"✨ **سلام {user.first_name} عزیز، خوش آمدید!** ✨\n\n"
-            "این ربات مخصوص مدیریت و ساخت کانفینگ اختصاصی ادمین‌هاست.\n"
-            f"💬 **{FORCE_CHANNEL_USERNAME}**",
-            parse_mode="Markdown"
-        )
-        return
-
     await update.message.reply_text(
         f"🌟 **سلام {user.first_name} عزیز، خوش آمدید!** 🌟",
         parse_mode="Markdown",
@@ -134,13 +114,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global ADMINS_DATA, ADMINS_STATS
     user = update.effective_user
     user_id = user.id
-
-    if not is_allowed_user(user_id):
-        await update.message.reply_text(
-            f"🌸 کاربر گرامی، شما به بخش مدیریت دسترسی ندارید.\n💬 **{FORCE_CHANNEL_USERNAME}**",
-            parse_mode="Markdown"
-        )
-        return
 
     text = update.message.text.strip() if update.message and update.message.text else ""
 
@@ -169,7 +142,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚙️ لطفاً ابتدا پنل مورد نظر خود را انتخاب کنید:", reply_markup=get_panel_choice_keyboard())
         return
 
-    if text == "⚙️ مدیریت" and is_owner(user_id):
+    if text == "⚙️ مدیریت":
         keyboard = [
             [InlineKeyboardButton("📊 گزارشات ادمین‌ها", callback_data="menu_reports")],
             [InlineKeyboardButton("⚙️ تنظیمات ادمین‌ها", callback_data="menu_manage_admins")],
@@ -179,7 +152,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚙️ **پنل مدیریت ربات:**\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    if text == "💾 بکاپ" and is_owner(user_id):
+    if text == "💾 بکاپ":
         keyboard = [
             [InlineKeyboardButton("📥 دریافت فایل بکاپ", callback_data="backup_download")],
             [InlineKeyboardButton("📤 آپلود و بازگردانی بکاپ", callback_data="backup_upload")]
@@ -211,13 +184,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
             user_states[user_id] = {"step": "view_subs_list", "panel_type": panel_type}
-            admin_info = ADMINS_DATA.get(user_id, {})
-            admin_prefix = admin_info.get("prefix", "")
             
-            if not admin_prefix:
-                await update.message.reply_text("❌ پیشوندی برای نام‌گذاری کانفینگ‌های شما یافت نشد.", reply_markup=get_main_keyboard(user_id))
-                del user_states[user_id]
-                return
+            # اگر ادمین در دیکشنری نباشد، یک پیشوند پیش‌فرض در نظر می‌گیریم
+            if user_id not in ADMINS_DATA:
+                ADMINS_DATA[user_id] = {"prefix": f"User_{user_id}", "prepaid_gb": 0.0}
+            
+            admin_info = ADMINS_DATA.get(user_id, {})
+            admin_prefix = admin_info.get("prefix", f"User_{user_id}")
 
             await update.message.reply_text("⏳ در حال دریافت لیست اشتراک‌ها از پنل انتخابی...")
 
@@ -282,30 +255,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 msg += "📂 هیچ اشتراک فعالی با پیشوند شما در این پنل یافت نشد."
 
-            if len(msg) > 4000:
-                for x in range(0, len(msg), 4000):
-                    await update.message.reply_text(msg[x:x+4000], parse_mode="Markdown")
-                await update.message.reply_text("👇 برای دریافت مجدد لینک اشتراک روی دکمه زیر بزنید:", reply_markup=get_sub_menu_keyboard())
-            else:
-                await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_sub_menu_keyboard())
+            await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=get_sub_menu_keyboard())
             return
 
         elif step == "get_existing_config_username":
             search_username = text.strip()
-            admin_info = ADMINS_DATA.get(user_id, {})
-            admin_prefix = admin_info.get("prefix", "")
             panel_type = state_data.get("panel_type", "special")
-
-            if not is_owner(user_id):
-                if not (search_username.startswith(admin_prefix + "_") or search_username == admin_prefix):
-                    await update.message.reply_text(
-                        f"❌ دسترسی غیرمجاز!\nشما فقط مجاز به دریافت کانفینگ‌های مربوط به پیشوند خودتان (`{admin_prefix}`) هستید.",
-                        reply_markup=get_main_keyboard(user_id)
-                    )
-                    del user_states[user_id]
-                    return
-
             del user_states[user_id]
+            
             await update.message.reply_text("⏳ در حال جستجوی کانفینگ در پنل...")
 
             p_name = "💎 پنل ویژه" if panel_type == "special" else "⚡ پنل اقتصادی"
@@ -365,7 +322,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
 
             if not found:
-                await update.message.reply_text("❌ کانفینگی با این نام کاربری در پنل مورد نظر پیدا نشد یا متعلق به شما نیست.", reply_markup=get_main_keyboard(user_id))
+                await update.message.reply_text("❌ کانفینگی با این نام کاربری در پنل مورد نظر پیدا نشد.", reply_markup=get_main_keyboard(user_id))
             else:
                 await update.message.reply_text("✅ عملیات با موفقیت انجام شد.", reply_markup=get_main_keyboard(user_id))
             return
@@ -375,7 +332,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 new_admin_id = int(text.strip())
                 state_data["new_admin_id"] = new_admin_id
                 state_data["step"] = "add_admin_username"
-                await update.message.reply_text("👤 لطفاً یوزرنیم تلگرام این ادمین را وارد کنید (مثلا goatserverss):", reply_markup=get_cancel_keyboard())
+                await update.message.reply_text("👤 لطفاً یوزرنیم تلگرام این ادمین را وارد کنید:", reply_markup=get_cancel_keyboard())
             except ValueError:
                 await update.message.reply_text("❌ لطفاً یک آیدی عددی معتبر وارد کنید:")
             return
@@ -406,9 +363,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif step == "remove_admin_id":
             try:
                 target_id = int(text.strip())
-                if target_id == OWNER_TELEGRAM_ID:
-                    await update.message.reply_text("❌ نمی‌توانید مالک اصلی را حذف کنید!", reply_markup=get_main_keyboard(user_id))
-                elif target_id in ADMINS_DATA:
+                if target_id in ADMINS_DATA:
                     del ADMINS_DATA[target_id]
                     await update.message.reply_text(f"✅ ادمین با آیدی `{target_id}` حذف شد.", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
                 else:
@@ -422,9 +377,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             target = state_data["target_admin"]
             try:
                 val = float(text) if text.lower() != "none" else None
+                if target not in ADMINS_DATA:
+                    ADMINS_DATA[target] = {"prefix": f"User_{target}", "prepaid_gb": 0.0}
                 ADMINS_DATA[target]["max_gb"] = val
                 del user_states[user_id]
-                await update.message.reply_text(f"✅ محدودیت حجم ادمین روی `{val} GB` تنظیم شد.", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                await update.message.reply_text(f"✅ محدودیت حجم تنظیم شد.", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
             except ValueError:
                 await update.message.reply_text("❌ عدد معتبر یا کلمه none را وارد کنید:")
             return
@@ -433,9 +390,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             target = state_data["target_admin"]
             try:
                 val = int(text) if text.lower() != "none" else None
+                if target not in ADMINS_DATA:
+                    ADMINS_DATA[target] = {"prefix": f"User_{target}", "prepaid_gb": 0.0}
                 ADMINS_DATA[target]["max_days"] = val
                 del user_states[user_id]
-                await update.message.reply_text(f"✅ محدودیت روز ادمین روی `{val} روز` تنظیم شد.", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                await update.message.reply_text(f"✅ محدودیت روز تنظیم شد.", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
             except ValueError:
                 await update.message.reply_text("❌ عدد معتبر یا کلمه none را وارد کنید:")
             return
@@ -444,9 +403,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             target = state_data["target_admin"]
             try:
                 val = float(text)
+                if target not in ADMINS_DATA:
+                    ADMINS_DATA[target] = {"prefix": f"User_{target}", "prepaid_gb": 0.0}
                 ADMINS_DATA[target]["prepaid_gb"] = val
                 del user_states[user_id]
-                await update.message.reply_text(f"✅ پیش‌خرید حجم ادمین روی `{val} GB` تنظیم شد.", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                await update.message.reply_text(f"✅ پیش‌خرید حجم تنظیم شد.", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
             except ValueError:
                 await update.message.reply_text("❌ عدد معتبر وارد کنید:")
             return
@@ -459,15 +420,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     backup_data = json.loads(file_bytes.decode("utf-8"))
                     
                     if "ADMINS_DATA" in backup_data:
-                        # تبدیل کلیدهای دیکشنری به عدد (آیدی‌ها)
                         ADMINS_DATA = {int(k): v for k, v in backup_data["ADMINS_DATA"].items()}
                     if "ADMINS_STATS" in backup_data:
                         ADMINS_STATS = {int(k): v for k, v in backup_data["ADMINS_STATS"].items()}
 
                     del user_states[user_id]
-                    await update.message.reply_text("✅ اطلاعات و بکاپ با موفقیت بازگردانی شد!", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                    await update.message.reply_text("✅ اطلاعات بازگردانی شد!", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
                 except Exception as e:
-                    await update.message.reply_text(f"❌ خطا در خواندن فایل بکاپ:\n`{str(e)[:300]}`", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                    await update.message.reply_text(f"❌ خطا در خواندن فایل بکاپ: {str(e)[:200]}", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
             else:
                 await update.message.reply_text("❌ لطفاً فایل JSON پشتیبان را ارسال کنید:", reply_markup=get_cancel_keyboard())
             return
@@ -482,7 +442,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             
             state_data["step"] = "single_get_gb"
-            await update.message.reply_text("📊 حجم به گیگابایت را انتخاب کنید یا عدد دلخواه بفرستید:", reply_markup=get_gb_keyboard())
+            await update.message.reply_text("📊 حجم به گیگابایت را انتخاب کنید:", reply_markup=get_gb_keyboard())
             return
 
         elif step == "choose_panel_bulk":
@@ -500,51 +460,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif step == "single_get_gb":
             try:
                 gb_size = float(text)
-                admin_info = ADMINS_DATA.get(user_id, {})
+                if user_id not in ADMINS_DATA:
+                    ADMINS_DATA[user_id] = {"prefix": f"User_{user_id}", "prepaid_gb": 0.0}
                 
-                prepaid = admin_info.get("prepaid_gb", 0.0)
-                if prepaid > 0:
-                    if gb_size <= prepaid:
-                        ADMINS_DATA[user_id]["prepaid_gb"] -= gb_size
-                    else:
-                        remaining_gb = gb_size - prepaid
-                        ADMINS_DATA[user_id]["prepaid_gb"] = 0.0
-                        record_admin_stat(user_id, remaining_gb, 1)
-                        await update.message.reply_text(
-                            f"⚠️ **اخطار محدودیت پیش‌خرید:**\nحجم پیش‌خرید شما تمام شد و `{remaining_gb} GB` مازاد بر روی فاکتور اصلی محاسبه گردید.",
-                            parse_mode="Markdown"
-                        )
-                else:
-                    if admin_info.get("max_gb") and gb_size > admin_info["max_gb"]:
-                        await update.message.reply_text(f"❌ شما مجاز به ساخت کانفینگ با حجم بیشتر از `{admin_info['max_gb']} GB` نیستید!", parse_mode="Markdown")
-                        return
-                    record_admin_stat(user_id, gb_size, 1)
+                record_admin_stat(user_id, gb_size, 1)
 
                 state_data["gb_size"] = gb_size
                 state_data["step"] = "single_get_days"
-                await update.message.reply_text("⏳ تعداد روز اعتبار را انتخاب کنید یا عدد دلخواه بفرستید:", reply_markup=get_days_keyboard())
+                await update.message.reply_text("⏳ تعداد روز اعتبار را انتخاب کنید:", reply_markup=get_days_keyboard())
             except ValueError:
-                await update.message.reply_text("❌ لطفاً یک عدد معتبر وارد کنید:")
+                await update.message.reply_text("❌ عدد معتبر وارد کنید:")
             return
 
         elif step == "single_get_days":
             try:
                 expire_days = int(text)
-                admin_info = ADMINS_DATA.get(user_id, {})
-                if admin_info.get("max_days") and expire_days > admin_info["max_days"]:
-                    await update.message.reply_text(f"❌ شما مجاز به ساخت کانفینگ با اعتبار بیشتر از `{admin_info['max_days']} روز` نیستید!", parse_mode="Markdown")
-                    return
             except ValueError:
-                await update.message.reply_text("❌ لطفاً یک عدد معتبر وارد کنید:")
+                await update.message.reply_text("❌ عدد معتبر وارد کنید:")
                 return
 
             panel_type = state_data["panel_type"]
             gb_size = state_data["gb_size"]
             
-            admin_prefix = ADMINS_DATA.get(user_id, {}).get("prefix", "User")
+            if user_id not in ADMINS_DATA:
+                ADMINS_DATA[user_id] = {"prefix": f"User_{user_id}", "prepaid_gb": 0.0}
+            admin_prefix = ADMINS_DATA[user_id].get("prefix", f"User_{user_id}")
             del user_states[user_id]
 
-            await update.message.reply_text("⏳ در حال اتصال به پنل و ساخت کانفینگ...", reply_markup=get_main_keyboard(user_id))
+            await update.message.reply_text("⏳ در حال ساخت کانفینگ...", reply_markup=get_main_keyboard(user_id))
 
             try:
                 username_conf = f"{admin_prefix}_{int(datetime.now().timestamp())}"
@@ -557,7 +500,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 token, err = get_marzban_token(target_url, p_user, p_pass)
                 if not token:
-                    await update.message.reply_text(f"❌ خطا در دریافت توکن پنل:\n`{err}`", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                    await update.message.reply_text(f"❌ خطا در توکن پنل: {err}", reply_markup=get_main_keyboard(user_id))
                     return
 
                 payload = {
@@ -565,18 +508,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "status": "active",
                     "data_limit": bytes_limit, 
                     "expire": expire_timestamp,
-                    "proxies": {
-                        "vless": {}, 
-                        "trojan": {},
-                        "vmess": {},
-                        "shadowsocks": {}
-                    },
-                    "inbounds": {
-                        "vless": [], 
-                        "trojan": [],
-                        "vmess": [],
-                        "shadowsocks": []
-                    },
+                    "proxies": {"vless": {}, "trojan": {}, "vmess": {}, "shadowsocks": {}},
+                    "inbounds": {"vless": [], "trojan": [], "vmess": [], "shadowsocks": []},
                     "groups": ["all-migrated"]
                 }
                 if panel_type == "special":
@@ -595,7 +528,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     link = sub_path if sub_path.startswith("http") else f"{target_url.rstrip('/')}{sub_path}"
 
                     qr_file = generate_qr_code(link)
-                    
                     caption_text = (
                         f"👤 نام: `{username_conf}`\n"
                         f"📊 حجم: `{gb_size} GB`\n"
@@ -605,40 +537,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                     if "manual_cache" not in context.user_data:
                         context.user_data["manual_cache"] = {}
-                    
-                    context.user_data["manual_cache"][username_conf] = {
-                        "target_url": target_url,
-                        "token": token
-                    }
+                    context.user_data["manual_cache"][username_conf] = {"target_url": target_url, "token": token}
 
                     inline_kb = InlineKeyboardMarkup([
                         [InlineKeyboardButton("📥 دریافت دستی سرور", callback_data=f"manual_{username_conf}")]
                     ])
 
-                    await update.message.reply_photo(
-                        photo=qr_file,
-                        caption=caption_text,
-                        parse_mode="Markdown",
-                        reply_markup=inline_kb
-                    )
-
-                    if OWNER_TELEGRAM_ID and not is_owner(user_id):
-                        try:
-                            await context.bot.send_message(
-                                chat_id=OWNER_TELEGRAM_ID,
-                                text="🔔 **گزارش ثبت خرید جدید توسط ادمین:**\n\n"
-                                     f"👨‍💻 ادمین: @{user.username or user.first_name}\n"
-                                     f"⚙️ پنل: {'ویژه' if panel_type == 'special' else 'اقتصادی'}\n"
-                                     f"👤 نام کاربری: `{username_conf}`\n"
-                                     f"📊 حجم: `{gb_size} GB` | ⏳ روز: `{expire_days}`",
-                                parse_mode="Markdown"
-                            )
-                        except:
-                            pass
+                    await update.message.reply_photo(photo=qr_file, caption=caption_text, parse_mode="Markdown", reply_markup=inline_kb)
                 else:
-                    await update.message.reply_text(f"❌ خطای پاسخ پنل ({res.status_code}):\n`{res.text[:300]}`", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                    await update.message.reply_text(f"❌ خطای پاسخ پنل: {res.text[:200]}", reply_markup=get_main_keyboard(user_id))
             except Exception as e:
-                await update.message.reply_text(f"❌ خطای سیستمی رخ داد:\n`{str(e)[:300]}`", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                await update.message.reply_text(f"❌ خطا: {str(e)[:200]}", reply_markup=get_main_keyboard(user_id))
             return
 
         elif step == "bulk_get_count":
@@ -646,7 +555,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 count = int(text)
                 state_data["count"] = count
                 state_data["step"] = "bulk_get_gb"
-                await update.message.reply_text("📊 حجم هر کانفینگ را انتخاب کنید یا عدد دلخواه بفرستید:", reply_markup=get_gb_keyboard())
+                await update.message.reply_text("📊 حجم هر کانفینگ را انتخاب کنید:", reply_markup=get_gb_keyboard())
             except ValueError:
                 await update.message.reply_text("❌ عدد معتبر وارد کنید:")
             return
@@ -654,31 +563,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif step == "bulk_get_gb":
             try:
                 gb_size = float(text)
-                admin_info = ADMINS_DATA.get(user_id, {})
                 count = state_data.get("count", 1)
-                total_req_gb = gb_size * count
-
-                prepaid = admin_info.get("prepaid_gb", 0.0)
-                if prepaid > 0:
-                    if total_req_gb <= prepaid:
-                        ADMINS_DATA[user_id]["prepaid_gb"] -= total_req_gb
-                    else:
-                        remaining_total = total_req_gb - prepaid
-                        ADMINS_DATA[user_id]["prepaid_gb"] = 0.0
-                        record_admin_stat(user_id, remaining_total, 1)
-                        await update.message.reply_text(
-                            f"⚠️ **اخطار محدودیت پیش‌خرید:**\nحجم پیش‌خرید شما تمام شد و مقدار مازاد روی فاکتور اصلی محاسبه گردید.",
-                            parse_mode="Markdown"
-                        )
-                else:
-                    if admin_info.get("max_gb") and gb_size > admin_info["max_gb"]:
-                        await update.message.reply_text(f"❌ شما مجاز به ساخت کانفینگ با حجم بیشتر از `{admin_info['max_gb']} GB` نیستید!", parse_mode="Markdown")
-                        return
-                    record_admin_stat(user_id, gb_size, count)
+                if user_id not in ADMINS_DATA:
+                    ADMINS_DATA[user_id] = {"prefix": f"User_{user_id}", "prepaid_gb": 0.0}
+                
+                record_admin_stat(user_id, gb_size, count)
 
                 state_data["gb_size"] = gb_size
                 state_data["step"] = "bulk_get_days"
-                await update.message.reply_text("⏳ تعداد روز اعتبار را انتخاب کنید یا عدد دلخواه بفرستید:", reply_markup=get_days_keyboard())
+                await update.message.reply_text("⏳ تعداد روز اعتبار را انتخاب کنید:", reply_markup=get_days_keyboard())
             except ValueError:
                 await update.message.reply_text("❌ عدد معتبر وارد کنید:")
             return
@@ -686,10 +579,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif step == "bulk_get_days":
             try:
                 expire_days = int(text)
-                admin_info = ADMINS_DATA.get(user_id, {})
-                if admin_info.get("max_days") and expire_days > admin_info["max_days"]:
-                    await update.message.reply_text(f"❌ شما مجاز به ساخت کانفینگ با اعتبار بیشتر از `{admin_info['max_days']} روز` نیستید!", parse_mode="Markdown")
-                    return
             except ValueError:
                 await update.message.reply_text("❌ عدد معتبر وارد کنید:")
                 return
@@ -698,10 +587,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             count = state_data["count"]
             gb_size = state_data["gb_size"]
             
-            admin_prefix = ADMINS_DATA.get(user_id, {}).get("prefix", "User")
+            if user_id not in ADMINS_DATA:
+                ADMINS_DATA[user_id] = {"prefix": f"User_{user_id}", "prepaid_gb": 0.0}
+            admin_prefix = ADMINS_DATA[user_id].get("prefix", f"User_{user_id}")
             del user_states[user_id]
 
-            await update.message.reply_text(f"⏳ در حال ساخت و ارسال {count} کانفینگ...", reply_markup=get_main_keyboard(user_id))
+            await update.message.reply_text(f"⏳ در حال ساخت {count} کانفینگ...", reply_markup=get_main_keyboard(user_id))
 
             try:
                 target_url = PANEL_VOLUMETRIC_URL if panel_type == "special" else PANEL_ECO_URL
@@ -712,7 +603,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 success_count = 0
-                failed = 0
                 bytes_limit = int(gb_size * 1024 * 1024 * 1024) if gb_size > 0 else None
                 expire_timestamp = int((datetime.now() + timedelta(days=expire_days)).timestamp()) if expire_days > 0 else None
 
@@ -727,18 +617,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "status": "active",
                         "data_limit": bytes_limit, 
                         "expire": expire_timestamp,
-                        "proxies": {
-                            "vless": {}, 
-                            "trojan": {},
-                            "vmess": {},
-                            "shadowsocks": {}
-                        },
-                        "inbounds": {
-                            "vless": [], 
-                            "trojan": [],
-                            "vmess": [],
-                            "shadowsocks": []
-                        },
+                        "proxies": {"vless": {}, "trojan": {}, "vmess": {}, "shadowsocks": {}},
+                        "inbounds": {"vless": [], "trojan": [], "vmess": [], "shadowsocks": []},
                         "groups": ["all-migrated"]
                     }
                     if panel_type == "special":
@@ -767,38 +647,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 f"🔗 لینک اشتراک:\n`{link}`"
                             )
                             
-                            context.user_data["manual_cache"][username_conf] = {
-                                "target_url": target_url,
-                                "token": token
-                            }
-
-                            inline_kb = InlineKeyboardMarkup([
-                                [InlineKeyboardButton("📥 دریافت دستی سرور", callback_data=f"manual_{username_conf}")]
-                            ])
+                            context.user_data["manual_cache"][username_conf] = {"target_url": target_url, "token": token}
+                            inline_kb = InlineKeyboardMarkup([[InlineKeyboardButton("📥 دریافت دستی سرور", callback_data=f"manual_{username_conf}")]])
                             
                             await update.message.reply_photo(photo=qr_file, caption=caption_text, parse_mode="Markdown", reply_markup=inline_kb)
-                        else:
-                            failed += 1
-                    except:
-                        failed += 1
-
-                await update.message.reply_text(f"📦 **گزارش نهایی ساخت عمده:**\n✅ موفق و ارسال‌شده: {success_count}\n❌ ناموفق: {failed}", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
-
-                if OWNER_TELEGRAM_ID and not is_owner(user_id):
-                    try:
-                        await context.bot.send_message(
-                            chat_id=OWNER_TELEGRAM_ID,
-                            text="📦 **گزارش ساخت عمده توسط ادمین:**\n\n" +
-                                 f"👨‍💻 ادمین: @{user.username or user.first_name}\n" +
-                                 f"⚙️ پنل: {'ویژه' if panel_type == 'special' else 'اقتصادی'}\n" +
-                                 f"✅ تعداد موفق: {success_count}\n" +
-                                 f"❌ ناموفق: {failed}",
-                            parse_mode="Markdown"
-                        )
                     except:
                         pass
+
+                await update.message.reply_text(f"📦 ساخت عمده به پایان رسید. موفق: {success_count} عدد", reply_markup=get_main_keyboard(user_id))
             except Exception as e:
-                await update.message.reply_text(f"❌ خطای سیستمی در ساخت عمده:\n`{str(e)[:300]}`", parse_mode="Markdown", reply_markup=get_main_keyboard(user_id))
+                await update.message.reply_text(f"❌ خطا: {str(e)[:200]}", reply_markup=get_main_keyboard(user_id))
             return
 
     else:
@@ -810,64 +668,44 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if data.startswith("manual_"):
-        await query.answer("⏳ در حال استخراج و ساخت سرورهای رندوم...", show_alert=False)
+        await query.answer("⏳ در حال استخراج سرورها...", show_alert=False)
         username_conf = data.replace("manual_", "", 1)
-
         manual_cache = context.user_data.get("manual_cache", {})
         conf_info = manual_cache.get(username_conf)
 
         if not conf_info:
-            await query.message.reply_text("❌ اطلاعات این کانفینگ منقضی شده است. لطفاً دوباره کانفینگ بسازید.")
+            await query.message.reply_text("❌ اطلاعات منقضی شده است.")
             return
-
-        target_url = conf_info["target_url"]
-        token = conf_info["token"]
 
         try:
             res = requests.get(
-                f"{target_url.rstrip('/')}/api/user/{username_conf}",
-                headers={"Authorization": f"Bearer {token}"},
+                f"{conf_info['target_url'].rstrip('/')}/api/user/{username_conf}",
+                headers={"Authorization": f"Bearer {conf_info['token']}"},
                 verify=False,
                 timeout=10
             )
             if res.status_code == 200:
                 user_data = res.json()
                 links = user_data.get("links", [])
-                
-                if not links:
-                    proxies = user_data.get("proxies", {})
-                    for p_type, p_val in proxies.items():
-                        if isinstance(p_val, dict) and "links" in p_val:
-                            links.extend(p_val["links"])
-
                 if not links:
                     sub_url = user_data.get("subscription_url")
                     if sub_url:
-                        links = [sub_url if sub_url.startswith("http") else f"{target_url.rstrip('/')}{sub_url}"]
+                        links = [sub_url if sub_url.startswith("http") else f"{conf_info['target_url'].rstrip('/')}{sub_url}"]
 
                 if links:
                     selected_links = random.sample(links, min(5, len(links)))
-                    
-                    await query.message.reply_text(f"🔍 **۵ لوکیشن و سرور رندوم برای `{username_conf}`:**", parse_mode="Markdown")
-                    
-                    for idx, link in enumerate(selected_links, 1):
-                        config_name = "سرور ناشناس"
+                    for link in selected_links:
+                        config_name = "سرور"
                         if "#" in link:
-                            raw_name = link.split("#")[-1]
-                            config_name = urllib.parse.unquote(raw_name)
-
+                            config_name = urllib.parse.unquote(link.split("#")[-1])
                         qr_bio = generate_qr_code(link)
-                        await query.message.reply_photo(
-                            photo=qr_bio,
-                            caption=f"📍 **{config_name}**\n\n`{link}`",
-                            parse_mode="Markdown"
-                        )
+                        await query.message.reply_photo(photo=qr_bio, caption=f"📍 **{config_name}**\n\n`{link}`", parse_mode="Markdown")
                 else:
-                    await query.message.reply_text("❌ هیچ لینک سرور مجزایی برای این کانفینگ یافت نشد.")
+                    await query.message.reply_text("❌ لینکی یافت نشد.")
             else:
-                await query.message.reply_text("❌ خطا در برقراری ارتباط با پنل جهت دریافت لینک‌ها.")
+                await query.message.reply_text("❌ خطا در برقراری ارتباط با پنل.")
         except Exception as e:
-            await query.message.reply_text(f"❌ خطا: {str(e)[:200]}")
+            await query.message.reply_text(f"❌ خطا: {str(e)[:150]}")
         return
 
     await query.answer()
@@ -876,26 +714,23 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = []
         for adm_id, info in ADMINS_DATA.items():
             keyboard.append([InlineKeyboardButton(f"👤 @{info.get('username', adm_id)}", callback_data=f"report_{adm_id}")])
-        keyboard.append([InlineKeyboardButton("🔙 بازگشت به منوی مدیریت", callback_data="menu_back_main")])
-        await query.edit_message_text("📊 **لیست ادمین‌ها جهت مشاهده گزارشات خرید:**\nروی نام ادمین مورد نظر کلیک کنید:", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+        keyboard.append([InlineKeyboardButton("🔙 بازگشت", callback_data="menu_back_main")])
+        await query.edit_message_text("📊 لیست گزارشات ادمین‌ها:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == "menu_manage_admins":
         keyboard = []
         for adm_id, info in ADMINS_DATA.items():
-            keyboard.append([InlineKeyboardButton(f"⚙️ تنظیمات @{info.get('username', adm_id)}", callback_data=f"manage_{adm_id}")])
-        keyboard.append([InlineKeyboardButton("🔙 بازگشت به منوی مدیریت", callback_data="menu_back_main")])
-        await query.edit_message_text("⚙️ **مدیریت ادمین‌ها:**\nبرای اعمال محدودیت حجم/روز یا پیش‌خرید روی ادمین مورد نظر کلیک کنید:", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+            keyboard.append([InlineKeyboardButton(f"⚙️ @{info.get('username', adm_id)}", callback_data=f"manage_{adm_id}")])
+        keyboard.append([InlineKeyboardButton("🔙 بازگشت", callback_data="menu_back_main")])
+        await query.edit_message_text("⚙️ مدیریت ادمین‌ها:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == "menu_add_admin":
         user_states[user_id] = {"step": "add_admin_id"}
-        await query.edit_message_text("🆔 لطفاً **آیدی عددی (Telegram ID)** ادمین جدید را وارد کنید:\n*(برای لغو به منوی اصلی برگردید)*", parse_mode="Markdown")
+        await query.edit_message_text("🆔 آیدی عددی ادمین جدید را وارد کنید:")
 
     elif data == "menu_remove_admin":
         user_states[user_id] = {"step": "remove_admin_id"}
-        admins_list = "\n".join([f"• `{adm_id}` (@{info.get('username', 'NoUsername')})" for adm_id, info in ADMINS_DATA.items() if adm_id != OWNER_TELEGRAM_ID])
-        if not admins_list:
-            admins_list = "هیچ ادمین دیگری وجود ندارد."
-        await query.edit_message_text(f"🗑 ادمین‌های فعلی:\n{admins_list}\n\n🆔 آیدی عددی ادمینی که می‌خواهید حذف کنید را وارد کنید:", parse_mode="Markdown")
+        await query.edit_message_text("🗑 آیدی عددی ادمینی که می‌خواهید حذف کنید را وارد کنید:")
 
     elif data == "menu_back_main":
         keyboard = [
@@ -904,93 +739,49 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("➕ افزودن ادمین جدید", callback_data="menu_add_admin")],
             [InlineKeyboardButton("🗑 حذف ادمین", callback_data="menu_remove_admin")]
         ]
-        await query.edit_message_text("⚙️ **پنل مدیریت ربات:**\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text("⚙️ پنل مدیریت:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data == "backup_download":
-        backup_dict = {
-            "ADMINS_DATA": ADMINS_DATA,
-            "ADMINS_STATS": ADMINS_STATS
-        }
+        backup_dict = {"ADMINS_DATA": ADMINS_DATA, "ADMINS_STATS": ADMINS_STATS}
         json_bytes = io.BytesIO(json.dumps(backup_dict, ensure_ascii=False, indent=4).encode("utf-8"))
-        json_bytes.name = f"bot_backup_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
-        await query.message.reply_document(
-            document=json_bytes,
-            caption="💾 **فایل پشتیبان (بکاپ) اطلاعات ادمین‌ها و آمار:**",
-            parse_mode="Markdown"
-        )
+        json_bytes.name = "backup.json"
+        await query.message.reply_document(document=json_bytes, caption="💾 فایل پشتیبان:")
 
     elif data == "backup_upload":
         user_states[user_id] = {"step": "restore_backup"}
-        await query.edit_message_text("📤 لطفاً فایل JSON پشتیبان (بکاپ) خود را ارسال کنید تا اطلاعات بازگردانی شود:", parse_mode="Markdown")
+        await query.edit_message_text("📤 فایل JSON بکاپ را ارسال کنید:")
 
     elif data.startswith("report_"):
         adm_id = int(data.split("_")[1])
         info = ADMINS_DATA.get(adm_id, {})
         stat = ADMINS_STATS.get(adm_id, {"total_configs": 0, "total_gb": 0.0})
-        prepaid_val = info.get("prepaid_gb", 0.0)
-        
         keyboard = [[InlineKeyboardButton("🔙 بازگشت", callback_data="menu_reports")]]
-        await query.edit_message_text(
-            f"📊 **گزارش خرید ادمین @{info.get('username', adm_id)}:**\n\n"
-            f"📦 تعداد کل خریدها: `{stat['total_configs']}` عدد\n"
-            f"📊 مجموع حجم فاکتور اصلی: `{stat['total_gb']} GB`\n"
-            f"⚡ حجم پیش‌خرید باقی‌مانده: `{prepaid_val} GB`",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        await query.edit_message_text(f"📊 گزارش ادمین:\nتعداد کل: {stat['total_configs']}\nحجم کل: {stat['total_gb']} GB", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data.startswith("manage_"):
         adm_id = int(data.split("_")[1])
-        info = ADMINS_DATA.get(adm_id, {})
-        max_gb = info.get("max_gb", "نامحدود")
-        max_days = info.get("max_days", "نامحدود")
-        prepaid_gb = info.get("prepaid_gb", 0.0)
-
         keyboard = [
-            [InlineKeyboardButton("💳 تسویه حساب (صفر کردن آمار)", callback_data=f"clear_{adm_id}")],
             [InlineKeyboardButton("📊 تغییر محدودیت حجم", callback_data=f"limitgb_{adm_id}")],
             [InlineKeyboardButton("⏳ تغییر محدودیت روز", callback_data=f"limitdays_{adm_id}")],
-            [InlineKeyboardButton("⚡ تنظیم پیش‌خرید حجم", callback_data=f"prepaid_{adm_id}")],
             [InlineKeyboardButton("🔙 بازگشت", callback_data="menu_manage_admins")]
         ]
-        await query.edit_message_text(
-            f"⚙️ **تنظیمات ادمین @{info.get('username', adm_id)}:**\n\n"
-            f"• سقف حجم مجاز: `{max_gb}`\n"
-            f"• سقف روز مجاز: `{max_days}`\n"
-            f"• حجم پیش‌خرید شده: `{prepaid_gb} GB`",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    elif data.startswith("clear_"):
-        adm_id = int(data.split("_")[1])
-        if adm_id in ADMINS_STATS:
-            ADMINS_STATS[adm_id] = {"total_configs": 0, "total_gb": 0.0}
-        keyboard = [[InlineKeyboardButton("🔙 بازگشت به تنظیمات ادمین", callback_data=f"manage_{adm_id}")]]
-        await query.edit_message_text(f"✅ حساب ادمین تسویه و آمار خریدها صفر شد.", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(f"⚙️ تنظیمات ادمین:", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data.startswith("limitgb_"):
         adm_id = int(data.split("_")[1])
         user_states[user_id] = {"step": "set_max_gb", "target_admin": adm_id}
-        await query.edit_message_text(f"📊 لطفاً سقف حجم مجاز برای این ادمین را به گیگابایت وارد کنید (برای نامحدود کلمه `none` را بفرستید):", parse_mode="Markdown")
+        await query.edit_message_text("📊 سقف حجم مجاز (یا none):")
 
     elif data.startswith("limitdays_"):
         adm_id = int(data.split("_")[1])
         user_states[user_id] = {"step": "set_max_days", "target_admin": adm_id}
-        await query.edit_message_text(f"⏳ لطفاً سقف روز اعتبار برای این ادمین را وارد کنید (برای نامحدود کلمه `none` را بفرستید):", parse_mode="Markdown")
-
-    elif data.startswith("prepaid_"):
-        adm_id = int(data.split("_")[1])
-        user_states[user_id] = {"step": "set_prepaid_gb", "target_admin": adm_id}
-        await query.edit_message_text(f"⚡ لطفاً مقدار حجم پیش‌خرید جدید برای این ادمین را به گیگابایت وارد کنید:", parse_mode="Markdown")
+        await query.edit_message_text("⏳ سقف روز مجاز (یا none):")
 
 def main():
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, handle_message))
-    
     print("Bot is running...")
     app.run_polling()
 
