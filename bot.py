@@ -12,7 +12,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Cal
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-TELEGRAM_BOT_TOKEN = "-8769828959:AAGoyKmhtMZeFBUp2eLN-dOLMWR-hjOHX5s"
+TELEGRAM_BOT_TOKEN = "8769828959:AAFJln8ZxsSCrKh-67-y2QDKxD1ACnoRZAg"
 OWNER_USERNAME = "amirhszz"
 owner_chat_id = 6422509900
 
